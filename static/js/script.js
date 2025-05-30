@@ -72,14 +72,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
           const label = labels[data.rating - 1] || "unrated 🤔";
           ratingDisplay.innerHTML = `${stars}, ${label}`;
+          ratingDisplay.style.color = "white";
         } else {
           ratingDisplay.innerHTML = "Could not rate your review.";
+          ratingDisplay.style.color = "white";
+
         }
 
         restartBtn.classList.remove("hidden");
       } catch (error) {
         console.error("Error:", error);
         ratingDisplay.innerHTML = "Something went wrong 😓";
+        ratingDisplay.style.color = "white";
       }
     });
   }
