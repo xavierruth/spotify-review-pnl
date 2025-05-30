@@ -172,4 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+firebase-key.json/
+firebase-key.json
+
 firebase-key.json
