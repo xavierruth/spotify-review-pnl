@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-import requests
+from transformers import pipeline
 import os
 import json
 import firebase_admin
@@ -23,36 +23,10 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# Hugging Face Inference API
-HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/xavierruth/spotify-pnl"
-HUGGINGFACE_API_TOKEN = os.environ.get("HF_API_TOKEN")
-
-if not HUGGINGFACE_API_TOKEN:
-    raise ValueError("HF_API_TOKEN environment variable not set")
-
-def classify_text(text):
-    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-    payload = {"inputs": text}
-
-    try:
-        print("Enviando texto para Hugging Face:", text)
-        response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
-        print("Status da resposta:", response.status_code)
-        print("Resposta da API:", response.text)
-
-        response.raise_for_status()
-        result = response.json()
-
-        if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
-            label = result[0][0]["label"]
-            return int(label.replace("LABEL_", "")) + 1
-        else:
-            print("Formato inesperado da resposta:", result)
-            return None
-
-    except Exception as e:
-        print("Hugging Face API error:", e)
-        return None
+# ⚡ Carregamento do modelo Hugging Face via transformers (sem salvar localmente)
+print("Carregando modelo Hugging Face...")
+classifier = pipeline("text-classification", model="xavierruth/spotify-pnl")
+print("Modelo carregado com sucesso.")
 
 # Flask app
 app = Flask(__name__)
@@ -70,11 +44,10 @@ def predict():
         if not text:
             return jsonify({"error": "Empty review"}), 400
 
-        rating = classify_text(text)
-        if rating is None:
-            return jsonify({"error": "Model inference failed"}), 500
+        result = classifier(text)
+        label = result[0]["label"]
+        rating = int(label.replace("LABEL_", "")) + 1
 
-        # Salva no Firebase
         db.collection("reviews").add({
             "text": text,
             "rating": rating
