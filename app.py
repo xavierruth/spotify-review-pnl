@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from transformers import pipeline
+import requests
 import os
 import json
 import firebase_admin
@@ -23,10 +23,23 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# ⚡ Carrega o modelo Hugging Face apenas uma vez
-print("Carregando modelo Hugging Face...")
-classifier = pipeline("text-classification", model="xavierruth/spotify-pnl")
-print("Modelo carregado com sucesso.")
+# Hugging Face Inference API
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/xavierruth/spotify-pnl"
+HUGGINGFACE_API_KEY = os.environ.get("HF_API_KEY")
+
+def classify_text(text):
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
+    payload = {"inputs": text}
+
+    try:
+        response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        label = result[0][0]["label"]
+        return int(label.replace("LABEL_", "")) + 1
+    except Exception as e:
+        print("Hugging Face API error:", e)
+        return None
 
 # Flask app
 app = Flask(__name__)
@@ -44,10 +57,9 @@ def predict():
         if not text:
             return jsonify({"error": "Empty review"}), 400
 
-        # ⚡ Usa o modelo já carregado
-        result = classifier(text)
-        label = result[0]["label"]
-        rating = int(label.replace("LABEL_", "")) + 1
+        rating = classify_text(text)
+        if rating is None:
+            return jsonify({"error": "Model inference failed"}), 500
 
         # Salva no Firebase
         db.collection("reviews").add({
