@@ -27,6 +27,7 @@ db = firestore.client()
 HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/xavierruth/spotify-pnl"
 HUGGINGFACE_API_KEY = os.environ.get("HF_API_KEY")
 
+# ✅ Função corrigida
 def classify_text(text):
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
     payload = {"inputs": text}
@@ -35,7 +36,17 @@ def classify_text(text):
         response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-        label = result[0][0]["label"]
+        print("API response:", result)  # DEBUG
+
+        # Lida com diferentes formatos de resposta
+        if isinstance(result, list) and isinstance(result[0], dict):
+            label = result[0]["label"]
+        elif isinstance(result[0], list) and isinstance(result[0][0], dict):
+            label = result[0][0]["label"]
+        else:
+            print("Formato inesperado:", result)
+            return None
+
         return int(label.replace("LABEL_", "")) + 1
     except Exception as e:
         print("Hugging Face API error:", e)
