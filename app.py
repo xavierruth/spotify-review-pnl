@@ -25,19 +25,31 @@ db = firestore.client()
 
 # Hugging Face Inference API
 HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/xavierruth/spotify-pnl"
-HUGGINGFACE_API_KEY = os.environ.get("HF_API_TOKEN")  # Corrigido aqui
+HUGGINGFACE_API_TOKEN = os.environ.get("HF_API_TOKEN")
+
+if not HUGGINGFACE_API_TOKEN:
+    raise ValueError("HF_API_TOKEN environment variable not set")
 
 def classify_text(text):
-    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
     payload = {"inputs": text}
 
     try:
+        print("Enviando texto para Hugging Face:", text)
         response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
+        print("Status da resposta:", response.status_code)
+        print("Resposta da API:", response.text)
+
         response.raise_for_status()
         result = response.json()
-        print("API response:", result)  # Opcional para debug
-        label = result[0][0]["label"]
-        return int(label.replace("LABEL_", "")) + 1
+
+        if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+            label = result[0][0]["label"]
+            return int(label.replace("LABEL_", "")) + 1
+        else:
+            print("Formato inesperado da resposta:", result)
+            return None
+
     except Exception as e:
         print("Hugging Face API error:", e)
         return None
