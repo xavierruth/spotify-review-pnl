@@ -2,22 +2,18 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import os
 import json
+import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# Carregar variáveis de ambiente (funciona localmente com .env)
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
+# Carregar variáveis de ambiente
+load_dotenv()
 
-# Inicializar Firebase Admin com a chave vinda da variável de ambiente
+# Inicializar Firebase Admin com chave do ambiente
 firebase_key_json = os.environ.get("FIREBASE_KEY")
 if not firebase_key_json:
     raise ValueError("FIREBASE_KEY environment variable not set")
 
-# Parsear a string JSON da chave
 firebase_key = json.loads(firebase_key_json)
 cred = credentials.Certificate(firebase_key)
 firebase_admin.initialize_app(cred)
@@ -25,11 +21,14 @@ firebase_admin.initialize_app(cred)
 # Iniciar o banco
 db = firestore.client()
 
-# Carregar modelo BERT do Hugging Face
-MODEL_PATH = "xavierruth/spotify-pnl"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
-model.eval()
+# Configuração do Hugging Face
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")  # Deve estar no .env
+MODEL_ID = "xavierruth/spotify-pnl"
+HF_API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
+
+headers = {
+    "Authorization": f"Bearer {HF_API_TOKEN}"
+}
 
 # Iniciar Flask
 app = Flask(__name__)
@@ -47,11 +46,15 @@ def predict():
         if not text:
             return jsonify({"error": "Empty review"}), 400
 
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=1)
-            rating = torch.argmax(probs, dim=1).item() + 1
+        # Enviar para Hugging Face API
+        response = requests.post(HF_API_URL, headers=headers, json={"inputs": text})
+        response.raise_for_status()
+
+        outputs = response.json()
+        # Espera-se que seja uma lista com dicionários [{"label": "LABEL_2", "score": 0.85}, ...]
+        predicted = max(outputs, key=lambda x: x['score'])
+        label = predicted["label"]
+        rating = int(label.replace("LABEL_", "")) + 1  # LABEL_0 → 1, LABEL_4 → 5
 
         # Salvar no Firestore
         db.collection("reviews").add({
