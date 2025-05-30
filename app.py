@@ -23,9 +23,14 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# ⚡ Carregamento do modelo Hugging Face via transformers (sem salvar localmente)
+# ⚡ Carrega o modelo Hugging Face durante execução
 print("Carregando modelo Hugging Face...")
-classifier = pipeline("text-classification", model="xavierruth/spotify-pnl")
+hf_token = os.environ.get("HF_API_KEY")  # Opcional: só se for privado
+classifier = pipeline(
+    "text-classification",
+    model="xavierruth/spotify-pnl",
+    use_auth_token=hf_token
+)
 print("Modelo carregado com sucesso.")
 
 # Flask app
