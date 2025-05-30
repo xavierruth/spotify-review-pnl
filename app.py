@@ -54,7 +54,8 @@ def predict():
         response = requests.post(HF_API_URL, headers=headers, json={"inputs": text})
         response.raise_for_status()
         outputs = response.json()
-
+        print("API response:", outputs)
+        
         predicted = max(outputs, key=lambda x: x['score'])
         label = predicted["label"]
         rating = int(label.replace("LABEL_", "")) + 1
