@@ -23,15 +23,16 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# Carrega o modelo Hugging Face
-print("Carregando modelo Hugging Face...")
-hf_token = os.environ.get("HF_API_KEY") 
-classifier = pipeline(
-    "text-classification",
-    model="xavierruth/spotify-pnl",
-    use_auth_token=hf_token
-)
-print("Modelo carregado com sucesso.")
+HF_API_URL = "https://api-inference.huggingface.co/models/xavierruth/spotify-pnl"
+HF_API_TOKEN = os.environ.get("HF_API_KEY")
+
+headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+
+def hf_predict(text):
+    payload = {"inputs": text}
+    response = requests.post(HF_API_URL, headers=headers, json=payload)
+    response.raise_for_status()  # levanta erro se a requisição falhar
+    return response.json()
 
 # Flask app
 app = Flask(__name__)
