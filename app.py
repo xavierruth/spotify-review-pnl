@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify
-from transformers import pipeline
 import os
 import json
 import firebase_admin
