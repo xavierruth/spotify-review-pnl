@@ -23,9 +23,9 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# ⚡ Carrega o modelo Hugging Face durante execução
+# Carrega o modelo Hugging Face
 print("Carregando modelo Hugging Face...")
-hf_token = os.environ.get("HF_API_KEY")  # Opcional: só se for privado
+hf_token = os.environ.get("HF_API_KEY") 
 classifier = pipeline(
     "text-classification",
     model="xavierruth/spotify-pnl",
