@@ -1,23 +1,21 @@
-FROM python:3.11.9-slim-bookworm
+FROM python:3.11-slim
 
-# Evita mensagens interativas durante instalação
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Diretório de trabalho
 WORKDIR /app
+ENV PYTHONUNBUFFERED=1
 
-# Copia tudo para o container
+# Só copia o requirements primeiro para aproveitar cache
+COPY requirements.txt .
+
+# Instala dependências do sistema (caso realmente precise)
+RUN apt-get update && apt-get install -y build-essential \
+    && pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copia o resto do código
 COPY . .
 
-# Instala dependências do sistema e Python
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    && pip install --upgrade pip \
-    && pip install -r requirements.txt
-
-# Expõe a porta padrão do Spaces
 EXPOSE 7860
 
-# Comando para rodar o app
 CMD ["python", "app.py"]
