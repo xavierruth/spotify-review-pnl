@@ -5,12 +5,16 @@ import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Carregamento do .env em ambiente local
+# Configura a pasta de cache 
+os.environ["TRANSFORMERS_CACHE"] = "/tmp/.cache"
+os.makedirs("/tmp/.cache", exist_ok=True)
+
+# Carregamento do .env 
 if os.environ.get("RAILWAY_ENVIRONMENT") is None:
     from dotenv import load_dotenv
     load_dotenv()
 
-# Inicialização do Firebase
+# Firebase
 firebase_key_json = os.environ.get("FIREBASE_KEY")
 if not firebase_key_json:
     raise ValueError("FIREBASE_KEY environment variable not set")
@@ -23,17 +27,17 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# Carrega o modelo Hugging Face
+# Carregamento do modelo Hugging Face
 print("Carregando modelo Hugging Face...")
-hf_token = os.environ.get("HF_API_KEY") 
+hf_token = os.environ.get("HF_API_KEY")
+
 classifier = pipeline(
     "text-classification",
     model="xavierruth/spotify-pnl",
-    use_auth_token=hf_token
 )
 print("Modelo carregado com sucesso.")
 
-# Flask app
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -53,6 +57,7 @@ def predict():
         label = result[0]["label"]
         rating = int(label.replace("LABEL_", "")) + 1
 
+        # Armazena no Firestore
         db.collection("reviews").add({
             "text": text,
             "rating": rating
@@ -65,4 +70,5 @@ def predict():
         return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host="0.0.0.0", port=port)
